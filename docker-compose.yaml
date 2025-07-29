@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  clothesDatabase:
+    image: postgres:15
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 10s
+      retries: 5
+
+  part2-5team-clothes:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      APP_PORT: ${APP_PORT}
+
+      SPRING_PROFILES_ACTIVE:       ${SPRING_PROFILES_ACTIVE}
+      SPRING_DATASOURCE_URL:        jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME:   ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD:   ${DB_PASSWORD}
+
+    depends_on:
+      clothesDatabase:
+        condition: service_healthy
+
+    ports:
+      - "${HOST_PORT}:${APP_PORT}"
+
+    restart: always
+
+volumes:
+  postgres-data:
